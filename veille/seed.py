@@ -72,8 +72,15 @@ def main(argv: list[str]) -> int:
     lignes = [{k: s.get(k) for k in champs} for s in config.sources()]
     db.upsert("sources", lignes, ecraser=False)
     if "--maj-sources" in argv:
+        # Met à jour la définition technique (nom, type, url, requête) sans toucher à la fiabilité,
+        # réglée dans le cockpit. Une source réécrite repart à zéro côté santé et est réactivée.
+        en_base = {r["id"]: r for r in db.t("sources").select("id, type, url, requete").execute().data}
         for s in lignes:
-            db.t("sources").update({"url": s["url"], "requete": s["requete"], "nom": s["nom"]}).eq("id", s["id"]).execute()
+            avant = en_base.get(s["id"])
+            maj = {"nom": s["nom"], "type": s["type"], "url": s["url"], "requete": s["requete"]}
+            if avant and (avant["type"], avant["url"], avant["requete"]) != (s["type"], s["url"], s["requete"]):
+                maj |= {"actif": True, "echecs_consecutifs": 0, "derniere_erreur": None, "verifie": s["verifie"]}
+            db.t("sources").update(maj).eq("id", s["id"]).execute()
 
     db.fin_run(run_id, "ok", {}, [])
     print(f"Import terminé : {len(nouvelles)} nouvelle(s) hypothèse(s), {len(lignes)} source(s) déclarée(s).")

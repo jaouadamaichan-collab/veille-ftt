@@ -29,7 +29,7 @@ sources:
     echiquier: concurrentiel
     langue: en
     fiabilite: fiable
-    verifie: false
+    verifie: true
   - id: splash247
     nom: Splash247
     type: rss
@@ -37,7 +37,7 @@ sources:
     echiquier: concurrentiel
     langue: en
     fiabilite: fiable
-    verifie: false
+    verifie: true
   - id: offshore_energy
     nom: Offshore Energy
     type: rss
@@ -45,7 +45,7 @@ sources:
     echiquier: concurrentiel
     langue: en
     fiabilite: fiable
-    verifie: false
+    verifie: true
   - id: manifold_times
     nom: Manifold Times (soutage)
     type: rss
@@ -53,15 +53,15 @@ sources:
     echiquier: concurrentiel
     langue: en
     fiabilite: fiable
-    verifie: false
+    verifie: true
   - id: safety4sea
     nom: SAFETY4SEA
-    type: rss
-    url: https://safety4sea.com/feed/
+    type: serper   # flux RSS inaccessible (contrôle du 09/11/2026) → recherche ciblée sur le site
+    requete: site:safety4sea.com decarbonization OR FuelEU OR ETS OR alternative fuel
     echiquier: concurrentiel
     langue: en
     fiabilite: fiable
-    verifie: false
+    verifie: true
   - id: hellenic_shipping
     nom: Hellenic Shipping News
     type: rss
@@ -69,7 +69,7 @@ sources:
     echiquier: concurrentiel
     langue: en
     fiabilite: a_confirmer   # agrégateur : reprend beaucoup de contenus tiers
-    verifie: false
+    verifie: true
   - id: maritime_executive
     nom: The Maritime Executive
     type: rss
@@ -77,7 +77,7 @@ sources:
     echiquier: concurrentiel
     langue: en
     fiabilite: fiable
-    verifie: false
+    verifie: true
   - id: marinelink
     nom: MarineLink
     type: rss
@@ -85,23 +85,23 @@ sources:
     echiquier: concurrentiel
     langue: en
     fiabilite: fiable
-    verifie: false
+    verifie: true
   - id: meretmarine
     nom: Mer et Marine
-    type: rss
-    url: https://www.meretmarine.com/fr/rss.xml
+    type: serper   # flux RSS inaccessible (contrôle du 09/11/2026) → recherche ciblée sur le site
+    requete: site:meretmarine.com décarbonation OR GNL OR méthanol OR carburant OR émissions
     echiquier: concurrentiel
     langue: fr
     fiabilite: fiable
-    verifie: false
+    verifie: true
   - id: jmm
     nom: Journal de la Marine Marchande
-    type: rss
-    url: https://www.journalmarinemarchande.eu/feed
+    type: serper   # flux RSS inaccessible (contrôle du 09/11/2026) → recherche ciblée sur le site
+    requete: site:journalmarinemarchande.eu décarbonation OR carburant OR FuelEU OR ETS OR émissions
     echiquier: concurrentiel
     langue: fr
     fiabilite: fiable
-    verifie: false
+    verifie: true
   - id: serper_armateurs
     nom: Serper — armateurs & carburants
     type: serper
@@ -161,7 +161,7 @@ sources:
     echiquier: societe_civile
     langue: en
     fiabilite: fiable
-    verifie: false
+    verifie: true
   - id: icct
     nom: ICCT
     type: rss
@@ -169,15 +169,15 @@ sources:
     echiquier: societe_civile
     langue: en
     fiabilite: fiable
-    verifie: false
+    verifie: true
   - id: transport_environment
     nom: Transport & Environment
-    type: rss
-    url: https://www.transportenvironment.org/feed
+    type: serper   # flux RSS inaccessible (contrôle du 09/11/2026) → recherche ciblée sur le site
+    requete: site:transportenvironment.org shipping OR maritime OR ships
     echiquier: societe_civile
     langue: en
-    fiabilite: fiable   # ONG engagée : fiable sur les faits, orientée sur les interprétations
-    verifie: false
+    fiabilite: fiable
+    verifie: true
   - id: serper_ong
     nom: Serper — ONG & coalitions
     type: serper
