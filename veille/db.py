@@ -11,12 +11,37 @@ def maintenant() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def verifier_cle_serveur(cle: str) -> None:
+    """Refuse les clés publiques Supabase : les tables sont protégées par RLS sans politique publique,
+    seule la clé secrète (sb_secret_… ou JWT service_role) peut lire et écrire."""
+    import base64
+    import json
+
+    if cle.startswith("sb_publishable_"):
+        raise RuntimeError(
+            "SUPABASE_SERVICE_KEY contient la clé publique (sb_publishable_…). "
+            "Utilisez la clé secrète sb_secret_… (Project Settings → API Keys)."
+        )
+    if cle.startswith("eyJ"):
+        try:
+            charge = cle.split(".")[1]
+            role = json.loads(base64.urlsafe_b64decode(charge + "=" * (-len(charge) % 4))).get("role")
+        except Exception:
+            return
+        if role != "service_role":
+            raise RuntimeError(
+                f"SUPABASE_SERVICE_KEY contient une clé de rôle « {role} ». "
+                "Utilisez la clé service_role (Project Settings → API Keys → Legacy API Keys)."
+            )
+
+
 class Base:
     def __init__(self, url: str, cle: str):
         from supabase import create_client
 
         if not url or not cle:
             raise RuntimeError("SUPABASE_URL et SUPABASE_SERVICE_KEY sont requis")
+        verifier_cle_serveur(cle)
         self.c = create_client(url, cle)
 
     def t(self, nom: str):

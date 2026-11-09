@@ -195,3 +195,20 @@ def test_prompt_contient_hypotheses_indicateurs_et_regles():
     assert "CONTREDISENT" in s and "N'invente rien" in s
     m = construire_message(LOT[:1])
     assert '"i": 0' in m
+
+
+# ───────────── Clé Supabase ─────────────
+
+def _jwt(role):
+    import base64, json
+    b = lambda d: base64.urlsafe_b64encode(json.dumps(d).encode()).decode().rstrip("=")
+    return f"{b({'alg': 'HS256'})}.{b({'role': role})}.sig"
+
+
+def test_cle_publique_supabase_refusee():
+    from veille.db import verifier_cle_serveur
+    for cle in ("sb_publishable_abc", _jwt("anon")):
+        with pytest.raises(RuntimeError):
+            verifier_cle_serveur(cle)
+    verifier_cle_serveur("sb_secret_abc")
+    verifier_cle_serveur(_jwt("service_role"))
