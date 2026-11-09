@@ -214,23 +214,82 @@ def test_cle_publique_supabase_refusee():
     verifier_cle_serveur(_jwt("service_role"))
 
 
-def test_serper_s_arrete_apres_trois_refus_identiques(monkeypatch):
+def _plan(n):
+    return [{"requete": f"q{k}", "langue": "en", "source_id": "s", "origine": "serper"} for k in range(n)]
+
+
+def test_refus_serper_bascule_tout_le_passage_sur_duckduckgo(monkeypatch):
     from veille import run_daily
     from veille.collect import ErreurSerper
-    appels = []
+    serper, ddg = [], []
 
-    def refus(*a):
-        appels.append(a)
+    def refus(cle, requete, *a):
+        serper.append(requete)
         raise ErreurSerper(400, '{"message":"Not enough credits","statusCode":400}')
 
-    class Db:
-        def sources_actives(self):
-            return [{"id": f"s{n}", "type": "serper", "requete": f"q{n}", "langue": "en", "echiquier": "concurrentiel"} for n in range(30)]
+    def ddg_ok(requete, *a):
+        ddg.append(requete)
+        return [{"url": f"https://x.com/{requete}"}]
 
     monkeypatch.setattr(run_daily, "rechercher_serper", refus)
+    monkeypatch.setattr(run_daily, "rechercher_ddg", ddg_ok)
+    monkeypatch.setattr(run_daily.time, "sleep", lambda s: None)
     monkeypatch.setenv("SERPER_API_KEY", "x")
-    stats = {"nb_collectes": 0, "nb_requetes_serper": 0}
+    stats, erreurs = {"nb_requetes_serper": 0}, []
+    items = run_daily.rechercher(_plan(5), config.parametres(), stats, erreurs)
+    assert serper == ["q0"]                                  # un seul essai Serper
+    assert ddg == ["q0", "q1", "q2", "q3", "q4"]             # la requête refusée est reprise par DuckDuckGo
+    assert len(items) == 5 and stats["_nb_requetes_ddg"] == 5
+    assert "Not enough credits" in erreurs[0] and "bascule" in erreurs[0]
+
+
+def test_erreur_serper_ponctuelle_secourue_sans_bascule(monkeypatch):
+    from veille import run_daily
+    from veille.collect import ErreurSerper
+    ddg = []
+
+    def serper(cle, requete, *a):
+        if requete == "q1":
+            raise ErreurSerper(500, "erreur interne")
+        return [{"url": requete}]
+
+    monkeypatch.setattr(run_daily, "rechercher_serper", serper)
+    monkeypatch.setattr(run_daily, "rechercher_ddg", lambda requete, *a: ddg.append(requete) or [])
+    monkeypatch.setattr(run_daily.time, "sleep", lambda s: None)
+    monkeypatch.setenv("SERPER_API_KEY", "x")
+    stats = {"nb_requetes_serper": 0}
+    run_daily.rechercher(_plan(3), config.parametres(), stats, [])
+    assert ddg == ["q1"] and stats["nb_requetes_serper"] == 2
+
+
+def test_duckduckgo_interrompu_apres_trois_echecs(monkeypatch):
+    from veille import run_daily
+    from veille.collect import ErreurSource
+    appels = []
+
+    def ddg_ko(requete, *a):
+        appels.append(requete)
+        raise ErreurSource("DuckDuckGo : RatelimitException")
+
+    monkeypatch.setattr(run_daily, "rechercher_ddg", ddg_ko)
+    monkeypatch.setattr(run_daily.time, "sleep", lambda s: None)
+    monkeypatch.delenv("SERPER_API_KEY", raising=False)
     erreurs = []
-    run_daily.collecter(Db(), config.parametres(), stats, erreurs, [])
-    assert len(appels) == 3
-    assert "Not enough credits" in erreurs[0] and "interrompu" in erreurs[-1]
+    run_daily.rechercher(_plan(10), config.parametres(), {"nb_requetes_serper": 0}, erreurs)
+    assert len(appels) == 3 and "interrompu" in erreurs[-1] and "7 requête(s)" in erreurs[-1]
+
+
+def test_rechercher_ddg_convertit_les_resultats(monkeypatch):
+    import ddgs
+    from veille.collect import rechercher_ddg
+
+    class Faux:
+        def news(self, q, **kw):
+            assert kw == {"region": "fr-fr", "timelimit": "w", "max_results": 10}
+            return [{"url": "https://www.meretmarine.com/a?utm_source=x", "title": "<b>GNL</b> à Marseille", "body": "Soutage", "date": "2026-11-09T08:00:00+00:00"},
+                    {"url": "https://b.fr/c", "title": "Sans date", "body": "", "date": "il y a 2 heures"}]
+
+    monkeypatch.setattr(ddgs, "DDGS", Faux)
+    r = rechercher_ddg("site:meretmarine.com GNL", "fr", "meretmarine", "serper")
+    assert r[0]["titre"] == "GNL à Marseille" and r[0]["domaine"] == "meretmarine.com"
+    assert r[0]["publie_le"].startswith("2026-11-09") and r[1]["publie_le"] is None

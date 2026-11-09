@@ -118,6 +118,48 @@ def rechercher_serper(api_key: str, requete: str, langue: str, source_id: str, o
     return items
 
 
+def rechercher_ddg(requete: str, langue: str, source_id: str, origine: str) -> list[dict]:
+    """Secours gratuit (DuckDuckGo Actualités, bibliothèque ddgs). Moins stable que Serper :
+    peut être limité en débit depuis les serveurs GitHub."""
+    try:
+        from ddgs import DDGS
+
+        resultats = DDGS().news(
+            requete,
+            region="fr-fr" if langue == "fr" else "us-en",
+            timelimit="w",
+            max_results=10,
+        )
+    except Exception as ex:  # ddgs lève ses propres exceptions (limite de débit, délai, aucun résultat…)
+        if "no results" in str(ex).lower():
+            return []
+        raise ErreurSource(f"DuckDuckGo : {type(ex).__name__} : {str(ex)[:150]}") from ex
+
+    items = []
+    for n in resultats or []:
+        lien, titre = n.get("url"), nettoyer(n.get("title"), 300)
+        if not lien or not titre:
+            continue
+        publie = None
+        try:
+            publie = datetime.fromisoformat(str(n.get("date"))).astimezone(timezone.utc).isoformat()
+        except (TypeError, ValueError):
+            pass
+        items.append(
+            {
+                "url": lien,
+                "titre": titre,
+                "extrait": nettoyer(n.get("body")),
+                "source_id": source_id,
+                "origine": origine,
+                "domaine": domaine_de(lien),
+                "langue": langue,
+                "publie_le": publie,
+            }
+        )
+    return items
+
+
 def requetes_du_jour(
     sources_serper: list[dict], indicateurs: list[dict], jour: date, maximum: int, periode: int = 3
 ) -> list[dict]:

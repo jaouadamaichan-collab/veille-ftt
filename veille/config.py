@@ -53,6 +53,7 @@ class Parametres:
     max_requetes_serper: int
     taille_lot_tri: int
     jours_fenetre: int
+    pause_ddg: float
 
 
 def parametres() -> Parametres:
@@ -68,6 +69,7 @@ def parametres() -> Parametres:
         max_requetes_serper=int(e("MAX_REQUETES_SERPER", "20")),
         taille_lot_tri=int(e("TAILLE_LOT_TRI", "10")),
         jours_fenetre=int(e("JOURS_FENETRE", "7")),
+        pause_ddg=float(e("PAUSE_DDG", "2")),
     )
 
 

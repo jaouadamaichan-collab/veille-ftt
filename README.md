@@ -9,7 +9,7 @@ Agent de veille stratégique — décarbonation du transport maritime — fondé
 
 Chaque matin (GitHub Actions, 6h41 heure de Paris en hiver) :
 
-1. **Collecte** : flux RSS + recherches Serper (sources institutionnelles et requêtes des indicateurs, en rotation sur 3 jours).
+1. **Collecte** : flux RSS + recherches Serper (sources institutionnelles et requêtes des indicateurs, en rotation sur 3 jours). Si Serper refuse (crédits épuisés, clé invalide), le passage bascule automatiquement sur DuckDuckGo.
 2. **Dédoublonnage** : même URL ou même article → ignoré ; même dépêche reprise ailleurs → marquée *reprise* (ne compte pas comme source indépendante) ; même fait rédigé autrement → même *événement*.
 3. **Pré-filtre** sans IA par mots-clés du domaine.
 4. **Tri Haiku** : pertinence, score, échiquier, questions clés, et *propositions* de rattachement aux hypothèses (soutient / contredit), avec la justification factuelle. Les identifiants inventés par le modèle sont filtrés en code.
@@ -29,7 +29,8 @@ Chaque matin (GitHub Actions, 6h41 heure de Paris en hiver) :
    | `SUPABASE_SERVICE_KEY` | clé service_role |
 4. **Actions → Maintenance → Run workflow** :
    - `import-config` : importe questions, hypothèses (statut *proposee*), indicateurs et sources ;
-   - `sante-sources` : teste chaque flux RSS et affiche un tableau dans le résumé de l'exécution.
+   - `sante-sources` : teste chaque flux RSS et affiche un tableau dans le résumé de l'exécution ;
+   - `activer-hypotheses-proposees` : passe les hypothèses *proposee* en *active* (décision humaine historisée), en attendant le cockpit.
 5. **Actions → Veille quotidienne → Run workflow** pour un premier passage manuel.
 
 ## Réglages (variables d'environnement)
@@ -41,6 +42,7 @@ Chaque matin (GitHub Actions, 6h41 heure de Paris en hiver) :
 | `TAILLE_LOT_TRI` | 10 | Articles par appel de tri |
 | `MODELE_TRI` | `claude-haiku-4-5-20251001` | Modèle de tri quotidien |
 | `JOURS_FENETRE` | 7 | Fenêtre de collecte et de rapprochement |
+| `PAUSE_DDG` | 2 | Pause (s) entre deux recherches DuckDuckGo |
 
 ## Modifier le cadrage
 

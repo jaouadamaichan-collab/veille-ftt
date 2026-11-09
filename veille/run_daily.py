@@ -8,10 +8,11 @@ from __future__ import annotations
 
 import os
 import sys
+import time
 from datetime import date, datetime, timezone
 
 from . import config
-from .collect import ErreurSerper, ErreurSource, collecter_rss, fenetre, rechercher_serper, requetes_du_jour
+from .collect import ErreurSerper, ErreurSource, collecter_rss, fenetre, rechercher_ddg, rechercher_serper, requetes_du_jour
 from .db import Base
 from .dedup import normaliser_url, rapprocher
 from .llm import Budget, BudgetEpuise, ClientLLM, extraire_json
@@ -38,28 +39,61 @@ def collecter(db: Base, p: config.Parametres, stats: dict, erreurs: list[str], i
 
     log(f"RSS : {len(items)} article(s) récents")
 
-    if p.serper_api_key:
-        plan = requetes_du_jour([s for s in sources if s["type"] == "serper"], indicateurs, date.today(), p.max_requetes_serper)
-        refus_consecutifs, dernier_refus = 0, None
-        for r in plan:
+    plan = requetes_du_jour([s for s in sources if s["type"] == "serper"], indicateurs, date.today(), p.max_requetes_serper)
+    items += rechercher(plan, p, stats, erreurs)
+    stats["nb_collectes"] = len(items)
+    return items
+
+
+REFUS_SERPER = (400, 401, 402, 403, 429)  # crédits épuisés, clé invalide, quota : inutile d'insister
+
+
+def rechercher(plan: list[dict], p: config.Parametres, stats: dict, erreurs: list[str]) -> list[dict]:
+    """Serper en principal, DuckDuckGo en secours (D16 + option 3 du 09/11/2026).
+
+    - Une requête Serper qui échoue est retentée sur DuckDuckGo.
+    - Un refus de compte Serper (crédits, clé, quota) fait basculer tout le reste du passage sur DuckDuckGo.
+    - DuckDuckGo est interrompu après 3 échecs consécutifs (limitation de débit probable).
+    """
+    items: list[dict] = []
+    serper_actif = bool(p.serper_api_key)
+    if not serper_actif:
+        erreurs.append("SERPER_API_KEY absente : recherches sur DuckDuckGo uniquement")
+    nb_ddg, echecs_ddg, ddg_actif = 0, 0, True
+
+    for n, r in enumerate(plan):
+        if serper_actif:
             try:
                 items += rechercher_serper(p.serper_api_key, r["requete"], r["langue"], r["source_id"], r["origine"])
                 stats["nb_requetes_serper"] += 1
-                refus_consecutifs = 0
+                continue
             except ErreurSerper as ex:
-                refus_consecutifs = refus_consecutifs + 1 if ex.statut == dernier_refus else 1
-                dernier_refus = ex.statut
-                erreurs.append(f"Serper « {r['requete'][:40]} » : {ex}")
-                if refus_consecutifs >= 3 and ex.statut in (400, 401, 402, 403, 429):
-                    erreurs.append(f"Serper interrompu après 3 refus HTTP {ex.statut} identiques ({len(plan) - plan.index(r) - 1} requête(s) non tentée(s))")
-                    break
+                if ex.statut in REFUS_SERPER:
+                    serper_actif = False
+                    erreurs.append(f"Serper refuse le service ({ex}) : bascule sur DuckDuckGo pour la suite du passage")
+                    log(f"Serper refuse (HTTP {ex.statut}) → bascule DuckDuckGo")
+                else:
+                    erreurs.append(f"Serper « {r['requete'][:40]} » : {ex} → secours DuckDuckGo")
             except ErreurSource as ex:
-                erreurs.append(f"Serper « {r['requete'][:40]} » : {ex}")
-        log(f"Serper : {stats['nb_requetes_serper']}/{len(plan)} requête(s) réussie(s)")
-    else:
-        erreurs.append("SERPER_API_KEY absente : recherches ciblées ignorées")
+                erreurs.append(f"Serper « {r['requete'][:40]} » : {ex} → secours DuckDuckGo")
 
-    stats["nb_collectes"] = len(items)
+        if not ddg_actif:
+            continue
+        if nb_ddg or echecs_ddg:
+            time.sleep(p.pause_ddg)  # DuckDuckGo limite vite les rafales
+        try:
+            items += rechercher_ddg(r["requete"], r["langue"], r["source_id"], r["origine"])
+            nb_ddg += 1
+            echecs_ddg = 0
+        except ErreurSource as ex:
+            echecs_ddg += 1
+            erreurs.append(f"DuckDuckGo « {r['requete'][:40]} » : {ex}")
+            if echecs_ddg >= 3:
+                ddg_actif = False
+                erreurs.append(f"DuckDuckGo interrompu après 3 échecs consécutifs ({len(plan) - n - 1} requête(s) non tentée(s))")
+
+    log(f"Recherches : {len(plan)} prévue(s) · Serper {stats['nb_requetes_serper']} · DuckDuckGo {nb_ddg}")
+    stats["_nb_requetes_ddg"] = nb_ddg
     return items
 
 
@@ -149,7 +183,7 @@ def resume_actions(stats: dict, erreurs: list[str]) -> None:
         f"- Articles collectés : {stats['nb_collectes']}",
         f"- Nouveaux signaux : {stats['nb_nouveaux']}",
         f"- Signaux triés : {stats['nb_tries']}",
-        f"- Appels LLM : {stats['nb_appels_llm']} · Requêtes Serper : {stats['nb_requetes_serper']}",
+        f"- Appels LLM : {stats['nb_appels_llm']} · Requêtes Serper : {stats['nb_requetes_serper']} · DuckDuckGo : {stats.get('_nb_requetes_ddg', 0)}",
     ]
     if erreurs:
         lignes += ["", "### Incidents", *[f"- {e}" for e in erreurs]]
@@ -180,7 +214,7 @@ def main() -> int:
         erreurs.append(f"Arrêt : {type(ex).__name__} : {str(ex)[:300]}")
         raise
     finally:
-        db.fin_run(run_id, statut, stats, erreurs)
+        db.fin_run(run_id, statut, {k: v for k, v in stats.items() if not k.startswith('_')}, erreurs)
         resume_actions(stats, erreurs)
     return 0
 

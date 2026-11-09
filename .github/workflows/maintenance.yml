@@ -6,7 +6,7 @@ on:
       action:
         description: Action à lancer
         type: choice
-        options: [tests, import-config, import-config-maj-sources, sante-sources]
+        options: [tests, import-config, import-config-maj-sources, sante-sources, activer-hypotheses-proposees]
         default: tests
   push:
     branches: [main]
@@ -31,6 +31,9 @@ jobs:
       - name: Import de la configuration
         if: github.event_name == 'workflow_dispatch' && startsWith(inputs.action, 'import-config')
         run: python -m veille.seed ${{ inputs.action == 'import-config-maj-sources' && '--maj-sources' || '' }}
+      - name: Activer les hypothèses proposées (décision humaine)
+        if: github.event_name == 'workflow_dispatch' && inputs.action == 'activer-hypotheses-proposees'
+        run: python -m veille.valider --activer-proposees --motif "Validées par l'analyste (déclenchement manuel ${{ github.actor }}, run ${{ github.run_id }})"
       - name: Santé des flux RSS
         if: github.event_name == 'workflow_dispatch' && inputs.action == 'sante-sources'
         run: python -m veille.check_sources
