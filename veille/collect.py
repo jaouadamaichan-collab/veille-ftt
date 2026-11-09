@@ -20,6 +20,12 @@ class ErreurSource(RuntimeError):
     pass
 
 
+class ErreurSerper(ErreurSource):
+    def __init__(self, statut: int, corps: str):
+        self.statut, self.corps = statut, corps
+        super().__init__(f"Serper HTTP {statut} : {corps or '(réponse vide)'}")
+
+
 def nettoyer(texte: str | None, longueur: int = 600) -> str:
     if not texte:
         return ""
@@ -86,9 +92,11 @@ def rechercher_serper(api_key: str, requete: str, langue: str, source_id: str, o
     }
     try:
         rep = requests.post(SERPER_URL, json=corps, headers={"X-API-KEY": api_key}, timeout=TIMEOUT)
-        rep.raise_for_status()
     except requests.RequestException as ex:
         raise ErreurSource(f"Serper : {ex}") from ex
+    if rep.status_code != 200:
+        # Le corps de la réponse explique la cause (crédits épuisés, clé invalide, paramètre refusé…).
+        raise ErreurSerper(rep.status_code, rep.text.strip()[:200])
 
     items = []
     for n in rep.json().get("news", []):

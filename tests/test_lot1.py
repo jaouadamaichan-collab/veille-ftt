@@ -212,3 +212,25 @@ def test_cle_publique_supabase_refusee():
             verifier_cle_serveur(cle)
     verifier_cle_serveur("sb_secret_abc")
     verifier_cle_serveur(_jwt("service_role"))
+
+
+def test_serper_s_arrete_apres_trois_refus_identiques(monkeypatch):
+    from veille import run_daily
+    from veille.collect import ErreurSerper
+    appels = []
+
+    def refus(*a):
+        appels.append(a)
+        raise ErreurSerper(400, '{"message":"Not enough credits","statusCode":400}')
+
+    class Db:
+        def sources_actives(self):
+            return [{"id": f"s{n}", "type": "serper", "requete": f"q{n}", "langue": "en", "echiquier": "concurrentiel"} for n in range(30)]
+
+    monkeypatch.setattr(run_daily, "rechercher_serper", refus)
+    monkeypatch.setenv("SERPER_API_KEY", "x")
+    stats = {"nb_collectes": 0, "nb_requetes_serper": 0}
+    erreurs = []
+    run_daily.collecter(Db(), config.parametres(), stats, erreurs, [])
+    assert len(appels) == 3
+    assert "Not enough credits" in erreurs[0] and "interrompu" in erreurs[-1]

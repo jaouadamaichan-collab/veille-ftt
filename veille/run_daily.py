@@ -8,14 +8,19 @@ from __future__ import annotations
 
 import os
 import sys
-from datetime import date
+from datetime import date, datetime, timezone
 
 from . import config
-from .collect import ErreurSource, collecter_rss, fenetre, rechercher_serper, requetes_du_jour
+from .collect import ErreurSerper, ErreurSource, collecter_rss, fenetre, rechercher_serper, requetes_du_jour
 from .db import Base
 from .dedup import normaliser_url, rapprocher
 from .llm import Budget, BudgetEpuise, ClientLLM, extraire_json
 from .triage import construire_message, construire_systeme, valider_resultats
+
+
+def log(message: str) -> None:
+    """Journal d'avancement visible en direct dans GitHub Actions."""
+    print(f"[{datetime.now(timezone.utc):%H:%M:%S}] {message}", flush=True)
 
 
 def collecter(db: Base, p: config.Parametres, stats: dict, erreurs: list[str], indicateurs: list[dict]) -> list[dict]:
@@ -31,14 +36,26 @@ def collecter(db: Base, p: config.Parametres, stats: dict, erreurs: list[str], i
             db.sante_source(s, False, str(ex))
             erreurs.append(f"RSS {s['id']} : {ex}")
 
+    log(f"RSS : {len(items)} article(s) récents")
+
     if p.serper_api_key:
         plan = requetes_du_jour([s for s in sources if s["type"] == "serper"], indicateurs, date.today(), p.max_requetes_serper)
+        refus_consecutifs, dernier_refus = 0, None
         for r in plan:
             try:
                 items += rechercher_serper(p.serper_api_key, r["requete"], r["langue"], r["source_id"], r["origine"])
                 stats["nb_requetes_serper"] += 1
+                refus_consecutifs = 0
+            except ErreurSerper as ex:
+                refus_consecutifs = refus_consecutifs + 1 if ex.statut == dernier_refus else 1
+                dernier_refus = ex.statut
+                erreurs.append(f"Serper « {r['requete'][:40]} » : {ex}")
+                if refus_consecutifs >= 3 and ex.statut in (400, 401, 402, 403, 429):
+                    erreurs.append(f"Serper interrompu après 3 refus HTTP {ex.statut} identiques ({len(plan) - plan.index(r) - 1} requête(s) non tentée(s))")
+                    break
             except ErreurSource as ex:
                 erreurs.append(f"Serper « {r['requete'][:40]} » : {ex}")
+        log(f"Serper : {stats['nb_requetes_serper']}/{len(plan)} requête(s) réussie(s)")
     else:
         erreurs.append("SERPER_API_KEY absente : recherches ciblées ignorées")
 
@@ -69,6 +86,7 @@ def inserer(db: Base, p: config.Parametres, items: list[dict], stats: dict) -> N
         signal_id = db.inserer_signal(ligne)
         pool.append({"id": signal_id, "evenement_id": evenement_id, "reprise_de": r.reprise_de, "titre": it["titre"], "extrait": it["extrait"], "domaine": it["domaine"]})
         stats["nb_nouveaux"] += 1
+    log(f"Insertion : {stats['nb_nouveaux']} nouveau(x) signal(aux) sur {len(uniques)} URL(s) uniques ({len(connues)} déjà connue(s))")
 
 
 def trier(db: Base, p: config.Parametres, hypotheses: list[dict], indicateurs: list[dict], stats: dict, erreurs: list[str]) -> None:
@@ -89,6 +107,7 @@ def trier(db: Base, p: config.Parametres, hypotheses: list[dict], indicateurs: l
             db.enregistrer_tri({"signal_id": s["id"], "trie": True, "pertinent": False, "score": 0, "triage_brut": {"prefiltre": "ecarte"}})
             stats["nb_tries"] += 1
 
+    log(f"Pré-filtre : {len(candidats)} candidat(s) au tri IA, {len(a_trier) - len(candidats)} écarté(s)")
     if not candidats:
         return
 
@@ -118,6 +137,7 @@ def trier(db: Base, p: config.Parametres, hypotheses: list[dict], indicateurs: l
             db.inserer_liens(r["liens"])
             signalees |= {l["hypothese_id"] for l in r["liens"]}
             stats["nb_tries"] += 1
+        log(f"Tri : lot {k // p.taille_lot_tri + 1}/{-(-len(candidats) // p.taille_lot_tri)} traité")
     stats["nb_appels_llm"] = client.budget.appels
     db.hypotheses_signalees(signalees)
 
