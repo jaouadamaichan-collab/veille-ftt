@@ -82,8 +82,12 @@ def rechercher(plan: list[dict], p: config.Parametres, stats: dict, erreurs: lis
         if nb_ddg or echecs_ddg:
             time.sleep(p.pause_ddg)  # DuckDuckGo limite vite les rafales
         try:
-            items += rechercher_ddg(r["requete"], r["langue"], r["source_id"], r["origine"])
+            trouves = rechercher_ddg(r["requete"], r["langue"], r["source_id"], r["origine"])
+            items += trouves
             nb_ddg += 1
+            pertinents = sum(config.passe_prefiltre(t["titre"], t["extrait"]) for t in trouves)
+            exemple = f" · ex. « {trouves[0]['titre'][:70]} » ({trouves[0]['domaine']})" if trouves else ""
+            log(f"  DDG « {r['requete'][:50]} » : {len(trouves)} résultat(s), {pertinents} dans le domaine{exemple}")
             echecs_ddg = 0
         except ErreurSource as ex:
             echecs_ddg += 1
