@@ -229,7 +229,7 @@ def test_refus_serper_bascule_tout_le_passage_sur_duckduckgo(monkeypatch):
 
     def ddg_ok(requete, *a):
         ddg.append(requete)
-        return [{"url": f"https://x.com/{requete}"}]
+        return [{"url": f"https://x.com/{requete}", "titre": f"LNG {requete}", "extrait": "", "domaine": "x.com"}]
 
     monkeypatch.setattr(run_daily, "rechercher_serper", refus)
     monkeypatch.setattr(run_daily, "rechercher_ddg", ddg_ok)
@@ -283,13 +283,38 @@ def test_rechercher_ddg_convertit_les_resultats(monkeypatch):
     import ddgs
     from veille.collect import rechercher_ddg
 
+    vus = []
+
     class Faux:
         def news(self, q, **kw):
-            assert kw == {"region": "fr-fr", "timelimit": "w", "max_results": 10}
+            vus.append(("news", q, kw))
             return [{"url": "https://www.meretmarine.com/a?utm_source=x", "title": "<b>GNL</b> à Marseille", "body": "Soutage", "date": "2026-11-09T08:00:00+00:00"},
                     {"url": "https://b.fr/c", "title": "Sans date", "body": "", "date": "il y a 2 heures"}]
 
+        def text(self, q, **kw):
+            vus.append(("text", q, kw))
+            return [{"href": "https://www.imo.org/en/MediaCentre/x", "title": "MEPC 85", "body": "Net-zero framework"}]
+
     monkeypatch.setattr(ddgs, "DDGS", Faux)
-    r = rechercher_ddg("site:meretmarine.com GNL", "fr", "meretmarine", "serper")
+    r = rechercher_ddg("transport maritime GNL OR méthanol", "fr", "x", "serper")
+    assert vus[-1] == ("news", "transport maritime GNL", {"region": "fr-fr", "timelimit": "w", "max_results": 10})
     assert r[0]["titre"] == "GNL à Marseille" and r[0]["domaine"] == "meretmarine.com"
     assert r[0]["publie_le"].startswith("2026-11-09") and r[1]["publie_le"] is None
+    r = rechercher_ddg("site:imo.org net-zero framework OR MEPC", "en", "serper_imo", "serper")
+    assert vus[-1][:2] == ("text", "site:imo.org net-zero framework")      # site: → recherche web
+    assert r[0]["url"] == "https://www.imo.org/en/MediaCentre/x" and r[0]["domaine"] == "imo.org"
+
+
+@pytest.mark.parametrize(
+    "requete, attendu",
+    [
+        ("site:imo.org net-zero framework OR MEPC OR GHG", ("text", "site:imo.org net-zero framework")),
+        ("(site:europarl.europa.eu OR site:consilium.europa.eu) ETS maritime shipping", ("text", "site:europarl.europa.eu ETS maritime shipping")),
+        ('(Clean Shipping Coalition OR "Getting to Zero" OR UMAS) shipping decarbonisation', ("news", "Clean Shipping Coalition shipping decarbonisation")),
+        ("shipping line alternative fuel order OR offtake OR bunkering", ("news", "shipping line alternative fuel order")),
+        ("IMO ISWG-GHG 23 net-zero framework compromise", ("news", "IMO ISWG-GHG 23 net-zero framework")),
+    ],
+)
+def test_simplifier_pour_ddg(requete, attendu):
+    from veille.collect import simplifier_pour_ddg
+    assert simplifier_pour_ddg(requete) == attendu

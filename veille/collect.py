@@ -118,18 +118,41 @@ def rechercher_serper(api_key: str, requete: str, langue: str, source_id: str, o
     return items
 
 
+MOTS_MAX_DDG = 5
+
+
+def simplifier_pour_ddg(requete: str) -> tuple[str, str]:
+    """Adapte une requête écrite pour Serper/Google au moteur DuckDuckGo, qui gère mal OR,
+    les parenthèses et les requêtes longues, et ignore site: dans son onglet Actualités.
+
+    Retourne (mode, requete) : mode « text » (recherche web, respecte site:) ou « news ».
+    """
+    sites = re.findall(r"site:([^\s()]+)", requete)
+    sans_site = re.sub(r"site:[^\s()]+", " ", requete)
+    groupe = re.search(r"\(([^)]*)\)", sans_site)
+    if groupe:
+        dedans = [a.strip() for a in re.split(r"\s+OR\s+", groupe.group(1)) if a.strip()]
+        dehors = (sans_site[: groupe.start()] + " " + sans_site[groupe.end() :]).strip()
+        coeur = " ".join(filter(None, [dedans[0] if dedans else "", re.split(r"\s+OR\s+", dehors)[0] if dehors else ""]))
+    else:
+        coeur = re.split(r"\s+OR\s+", sans_site.strip())[0]
+    mots = re.sub(r"\s+", " ", coeur.replace('"', "")).strip().split(" ")
+    mots = [m for m in mots if m and m != "OR"][:MOTS_MAX_DDG]
+    if sites:
+        return "text", " ".join([f"site:{sites[0]}", *mots[:3]])
+    return "news", " ".join(mots)
+
+
 def rechercher_ddg(requete: str, langue: str, source_id: str, origine: str) -> list[dict]:
-    """Secours gratuit (DuckDuckGo Actualités, bibliothèque ddgs). Moins stable que Serper :
-    peut être limité en débit depuis les serveurs GitHub."""
+    """Secours gratuit (bibliothèque ddgs). Moins complet que Serper : la requête est simplifiée,
+    et le service peut être limité en débit depuis les serveurs GitHub."""
+    mode, q = simplifier_pour_ddg(requete)
     try:
         from ddgs import DDGS
 
-        resultats = DDGS().news(
-            requete,
-            region="fr-fr" if langue == "fr" else "us-en",
-            timelimit="w",
-            max_results=10,
-        )
+        moteur = DDGS()
+        recherche = moteur.text if mode == "text" else moteur.news
+        resultats = recherche(q, region="fr-fr" if langue == "fr" else "us-en", timelimit="w", max_results=10)
     except Exception as ex:  # ddgs lève ses propres exceptions (limite de débit, délai, aucun résultat…)
         if "no results" in str(ex).lower():
             return []
@@ -137,7 +160,7 @@ def rechercher_ddg(requete: str, langue: str, source_id: str, origine: str) -> l
 
     items = []
     for n in resultats or []:
-        lien, titre = n.get("url"), nettoyer(n.get("title"), 300)
+        lien, titre = n.get("url") or n.get("href"), nettoyer(n.get("title"), 300)
         if not lien or not titre:
             continue
         publie = None
