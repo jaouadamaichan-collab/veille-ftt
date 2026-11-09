@@ -1,0 +1,196 @@
+# Sources de collecte (D16, D17).
+# - type: rss | serper
+# - echiquier: concurrentiel | institutionnel | societe_civile
+# - fiabilite: fiable | a_confirmer | douteuse  (révisable dans le cockpit)
+# - verifie: false tant que `python -m veille.check_sources` n'a pas confirmé que le flux répond.
+#   Les flux en échec sont désactivés automatiquement après 5 échecs consécutifs (voir collect.py).
+#
+# Les institutions (OMI, Commission, Parlement, EUR-Lex) publient peu ou pas de RSS exploitables :
+# elles sont couvertes par des requêtes Serper ciblées sur leur domaine.
+
+sources:
+
+  # ─────────────── Requêtes pilotées par les indicateurs (une par indicateur, en rotation) ───────────────
+  # Pas de requête propre : elles portent les résultats des requêtes définies dans hypotheses_initiales.yaml.
+  # L'échiquier réel de chaque signal est déterminé au tri.
+  - id: serper_indicateurs
+    nom: Serper — requêtes des indicateurs
+    type: serper
+    echiquier: concurrentiel
+    langue: en
+    fiabilite: a_confirmer
+    verifie: true
+
+  # ─────────────── Concurrentiel : presse spécialisée & acteurs ───────────────
+  - id: gcaptain
+    nom: gCaptain
+    type: rss
+    url: https://gcaptain.com/feed/
+    echiquier: concurrentiel
+    langue: en
+    fiabilite: fiable
+    verifie: false
+  - id: splash247
+    nom: Splash247
+    type: rss
+    url: https://splash247.com/feed/
+    echiquier: concurrentiel
+    langue: en
+    fiabilite: fiable
+    verifie: false
+  - id: offshore_energy
+    nom: Offshore Energy
+    type: rss
+    url: https://www.offshore-energy.biz/feed/
+    echiquier: concurrentiel
+    langue: en
+    fiabilite: fiable
+    verifie: false
+  - id: manifold_times
+    nom: Manifold Times (soutage)
+    type: rss
+    url: https://www.manifoldtimes.com/feed/
+    echiquier: concurrentiel
+    langue: en
+    fiabilite: fiable
+    verifie: false
+  - id: safety4sea
+    nom: SAFETY4SEA
+    type: rss
+    url: https://safety4sea.com/feed/
+    echiquier: concurrentiel
+    langue: en
+    fiabilite: fiable
+    verifie: false
+  - id: hellenic_shipping
+    nom: Hellenic Shipping News
+    type: rss
+    url: https://www.hellenicshippingnews.com/feed/
+    echiquier: concurrentiel
+    langue: en
+    fiabilite: a_confirmer   # agrégateur : reprend beaucoup de contenus tiers
+    verifie: false
+  - id: maritime_executive
+    nom: The Maritime Executive
+    type: rss
+    url: https://maritime-executive.com/articles.rss
+    echiquier: concurrentiel
+    langue: en
+    fiabilite: fiable
+    verifie: false
+  - id: marinelink
+    nom: MarineLink
+    type: rss
+    url: https://www.marinelink.com/news/rss
+    echiquier: concurrentiel
+    langue: en
+    fiabilite: fiable
+    verifie: false
+  - id: meretmarine
+    nom: Mer et Marine
+    type: rss
+    url: https://www.meretmarine.com/fr/rss.xml
+    echiquier: concurrentiel
+    langue: fr
+    fiabilite: fiable
+    verifie: false
+  - id: jmm
+    nom: Journal de la Marine Marchande
+    type: rss
+    url: https://www.journalmarinemarchande.eu/feed
+    echiquier: concurrentiel
+    langue: fr
+    fiabilite: fiable
+    verifie: false
+  - id: serper_armateurs
+    nom: Serper — armateurs & carburants
+    type: serper
+    requete: shipping line alternative fuel order OR offtake OR bunkering
+    echiquier: concurrentiel
+    langue: en
+    fiabilite: a_confirmer
+    verifie: true
+
+  # ─────────────── Institutionnel ───────────────
+  - id: serper_imo
+    nom: Serper — OMI
+    type: serper
+    requete: site:imo.org net-zero framework OR MEPC OR GHG
+    echiquier: institutionnel
+    langue: en
+    fiabilite: fiable
+    verifie: true
+  - id: serper_commission
+    nom: Serper — Commission européenne
+    type: serper
+    requete: site:ec.europa.eu maritime ETS OR FuelEU OR shipping emissions
+    echiquier: institutionnel
+    langue: en
+    fiabilite: fiable
+    verifie: true
+  - id: serper_parlement
+    nom: Serper — Parlement européen & Conseil
+    type: serper
+    requete: (site:europarl.europa.eu OR site:consilium.europa.eu) ETS maritime shipping
+    echiquier: institutionnel
+    langue: en
+    fiabilite: fiable
+    verifie: true
+  - id: serper_emsa
+    nom: Serper — EMSA
+    type: serper
+    requete: site:emsa.europa.eu FuelEU OR ETS OR alternative fuels
+    echiquier: institutionnel
+    langue: en
+    fiabilite: fiable
+    verifie: true
+  - id: serper_france
+    nom: Serper — État français (mer, transition écologique)
+    type: serper
+    requete: (site:mer.gouv.fr OR site:ecologie.gouv.fr) décarbonation maritime OR transport maritime carburants
+    echiquier: institutionnel
+    langue: fr
+    fiabilite: fiable
+    verifie: true
+
+  # ─────────────── Société civile : ONG, recherche, coalitions ───────────────
+  - id: carbon_brief
+    nom: Carbon Brief
+    type: rss
+    url: https://www.carbonbrief.org/feed/
+    echiquier: societe_civile
+    langue: en
+    fiabilite: fiable
+    verifie: false
+  - id: icct
+    nom: ICCT
+    type: rss
+    url: https://theicct.org/feed/
+    echiquier: societe_civile
+    langue: en
+    fiabilite: fiable
+    verifie: false
+  - id: transport_environment
+    nom: Transport & Environment
+    type: rss
+    url: https://www.transportenvironment.org/feed
+    echiquier: societe_civile
+    langue: en
+    fiabilite: fiable   # ONG engagée : fiable sur les faits, orientée sur les interprétations
+    verifie: false
+  - id: serper_ong
+    nom: Serper — ONG & coalitions
+    type: serper
+    requete: (Clean Shipping Coalition OR "Getting to Zero" OR UMAS OR "Global Maritime Forum") shipping decarbonisation
+    echiquier: societe_civile
+    langue: en
+    fiabilite: a_confirmer
+    verifie: true
+  - id: serper_ong_fr
+    nom: Serper — société civile FR
+    type: serper
+    requete: transport maritime pollution OR décarbonation ONG OR syndicat OR chargeurs
+    echiquier: societe_civile
+    langue: fr
+    fiabilite: a_confirmer
+    verifie: true

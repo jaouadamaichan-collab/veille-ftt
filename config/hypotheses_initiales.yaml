@@ -1,0 +1,243 @@
+# Hypothèses initiales — F (Formuler) du protocole F-T-T.
+# Statut à l'import : "proposee". Elles ne deviennent "active" qu'après validation humaine (D15, D19).
+#
+# Règles de rédaction (thèse p. 283-288, 485) :
+#  - par question : 2 hypothèses + 1 contre-hypothèse, autant que possible mutuellement exclusives
+#    (tiers exclu) et départageables par des indicateurs observables ;
+#  - chaque hypothèse a au moins un indicateur qui la CONFIRME et un qui l'INFIRME (falsification) ;
+#  - "requete" alimente la recherche Serper ciblée (une requête par indicateur).
+#
+# État des lieux au 9 novembre 2026 (sources en bas de fichier).
+
+hypotheses:
+
+  # ───────────────────────────── Q1 — Carburants ─────────────────────────────
+  - id: H1-A
+    question: Q1
+    type: hypothese
+    enonce: >
+      Le GNL (avec trajectoire bio-GNL / e-GNL) verrouille le marché : il représente plus de la moitié
+      des commandes de navires à carburant alternatif chaque année jusqu'en 2030.
+    confiance: probable
+    contexte: >
+      DNV : 364 commandes à carburant alternatif sur janv.-oct. 2026 (+57 %), dont 230 au GNL (~63 %),
+      portées par les porte-conteneurs et les rouliers. Méthanol dual-fuel quasi à l'arrêt au S1 2026 (4 navires selon Clarksons).
+    indicateurs:
+      - id: H1-A-1
+        description: Part du GNL > 50 % dans le décompte mensuel DNV des commandes à carburant alternatif
+        sens: confirme
+        requete: DNV alternative fuel vessel orders LNG share month
+      - id: H1-A-2
+        description: Contrats d'approvisionnement ou d'offtake bio-GNL / e-GNL signés par des armateurs
+        sens: confirme
+        requete: bio-LNG bunkering offtake agreement shipping line
+      - id: H1-A-3
+        description: Deux mois consécutifs où la part GNL passe sous 40 % des commandes alternatives
+        sens: infirme
+        requete: alternative fuel orders ammonia methanol overtake LNG
+
+  - id: H1-B
+    question: Q1
+    type: hypothese
+    enonce: >
+      Bascule vers les filières « zéro émission » : à partir de 2028, ammoniac, méthanol et éthanol
+      réunis dépassent le GNL dans les commandes à carburant alternatif.
+    confiance: peu probable
+    contexte: >
+      Premiers rouliers à l'ammoniac commandés en 2026 ; intérêt croissant pour l'éthanol (Vale, motoristes).
+      La bascule suppose un signal-prix fort (OMI ou UE) et des usines de carburants verts financées.
+    indicateurs:
+      - id: H1-B-1
+        description: Décisions finales d'investissement (FID) d'usines d'e-méthanol ou d'ammoniac vert avec débouché maritime
+        sens: confirme
+        requete: final investment decision green ammonia e-methanol plant shipping fuel
+      - id: H1-B-2
+        description: Commandes groupées (≥ 4 navires) à l'ammoniac, au méthanol ou à l'éthanol par un grand armateur
+        sens: confirme
+        requete: orders ammonia-fuelled vessels series shipowner
+      - id: H1-B-3
+        description: Abandon ou report de projets d'usines de carburants verts maritimes
+        sens: infirme
+        requete: green methanol project cancelled delayed shipping
+
+  - id: H1-C
+    question: Q1
+    type: contre
+    enonce: >
+      Attentisme durable : faute de visibilité réglementaire, les armateurs repoussent le choix ;
+      le volume de commandes alternatives stagne ou recule et les navires « ready » (méthanol-ready,
+      ammonia-ready) remplacent les commandes réellement bi-carburant.
+    confiance: plausible
+    contexte: >
+      Au S1 2026, 85 navires commandés « methanol-ready » contre 4 en méthanol dual-fuel (Clarksons).
+      DNV avait relevé un recul des commandes alternatives au S1 avant le rebond du T3.
+    indicateurs:
+      - id: H1-C-1
+        description: Hausse de la part des commandes « ready » au détriment des commandes bi-carburant
+        sens: confirme
+        requete: methanol-ready ammonia-ready newbuild orders share
+      - id: H1-C-2
+        description: Déclarations d'armateurs liant explicitement le report de commandes à l'incertitude OMI
+        sens: confirme
+        requete: shipowners delay newbuild orders IMO uncertainty fuel choice
+      - id: H1-C-3
+        description: Commandes alternatives trimestrielles en hausse deux trimestres de suite (dynamique T3 2026 confirmée)
+        sens: infirme
+        requete: DNV quarterly alternative fuel orders record
+
+  # ───────────────────────────── Q2 — Régulation ─────────────────────────────
+  - id: H2-A
+    question: Q2
+    type: hypothese
+    enonce: >
+      Le Net-Zero Framework est adopté par l'OMI fin 2026 ou en 2027 sous une forme affaiblie
+      (sans fonds centralisé et/ou objectifs abaissés), et l'UE ajuste ETS/FuelEU pour éviter la double charge.
+    confiance: plausible
+    contexte: >
+      Adoption ajournée d'un an en octobre 2025 ; texte d'avril 2025 maintenu comme base au MEPC 84 (avril 2026) ;
+      ISWG-GHG de septembre 2026 sans accord, l'UE se disant ouverte à renoncer au fonds centralisé.
+      MEPC 85 du 30 nov. au 3 déc. 2026, reprise de la session extraordinaire prévue le 4 déc. 2026.
+    indicateurs:
+      - id: H2-A-1
+        description: Texte de compromis issu de l'ISWG-GHG 23 (23-27 nov. 2026) soutenu par une majorité d'États
+        sens: confirme
+        requete: IMO ISWG-GHG 23 net-zero framework compromise
+      - id: H2-A-2
+        description: Vote d'adoption à la session extraordinaire de l'OMI (décembre 2026 ou suivante)
+        sens: confirme
+        requete: IMO extraordinary session net-zero framework adopted vote
+      - id: H2-A-3
+        description: Nouvel ajournement ou retrait du texte de l'ordre du jour
+        sens: infirme
+        requete: IMO net-zero framework adjourned again December
+
+  - id: H2-B
+    question: Q2
+    type: hypothese
+    enonce: >
+      Nouvel échec ou report à l'OMI ; l'UE consolide et étend son régime régional
+      (FuelEU, ETS étendu aux navires de 400 à 5 000 GT, offshore), qui devient la référence de fait.
+    confiance: plausible
+    contexte: >
+      Proposition de révision de l'ETS du 17 juillet 2026 (COM(2026) 616) : navires de 400-5 000 GT dès 2031,
+      réserve de 110 M de quotas pour carburants durables. Orientation générale du Conseil visée le 11 déc. 2026,
+      plénière indicative du Parlement le 14 déc. 2026, accord visé au T1 2027.
+    indicateurs:
+      - id: H2-B-1
+        description: Orientation générale du Conseil ou vote du Parlement maintenant l'extension maritime de l'ETS
+        sens: confirme
+        requete: Council general approach ETS review maritime small ships
+      - id: H2-B-2
+        description: Déclarations de la Commission présentant le régime UE comme modèle en cas d'échec OMI
+        sens: confirme
+        requete: European Commission regional measures shipping IMO failure ETS
+      - id: H2-B-3
+        description: Adoption du Net-Zero Framework à l'OMI
+        sens: infirme
+        requete: IMO adopts net-zero framework
+
+  - id: H2-C
+    question: Q2
+    type: contre
+    enonce: >
+      Recul réglementaire : sous la pression géopolitique (États-Unis) et industrielle, l'UE assouplit
+      son régime (report de calendrier, exemptions élargies, baisse d'ambition) et l'OMI reste bloquée.
+    confiance: plausible
+    contexte: >
+      Les États-Unis ont menacé de sanctions, frais portuaires et restrictions de visas les soutiens du cadre OMI.
+      La Grèce aurait poussé en interne contre la position UE. Dérogations shipping prolongées à 2035 dans la proposition ETS.
+    indicateurs:
+      - id: H2-C-1
+        description: Amendements Parlement/Conseil retardant l'extension de l'ETS maritime ou élargissant les exemptions
+        sens: confirme
+        requete: amendment delay ETS maritime extension exemption Parliament Council
+      - id: H2-C-2
+        description: Mesures de rétorsion américaines visant des États ou armateurs pour leur soutien au cadre OMI
+        sens: confirme
+        requete: United States retaliation IMO carbon levy shipping sanctions port fees
+      - id: H2-C-3
+        description: Accord trilogue maintenant le calendrier et le périmètre proposés par la Commission
+        sens: infirme
+        requete: trilogue agreement ETS review maritime
+
+  # ───────────────────────── Q3 — Acteurs & opportunités ─────────────────────────
+  - id: H3-A
+    question: Q3
+    type: hypothese
+    enonce: >
+      En 2027-2028, le principal gisement d'opportunités est la conformité réglementaire
+      (mise en commun FuelEU, ETS, MRV, vérification, données) chez les armateurs européens de taille moyenne.
+    confiance: probable
+    contexte: >
+      Première période de vérification FuelEU achevée en 2026 (pénalité 2 400 €/t VLSFO-équivalent, ~640 €/t CO2e) ;
+      erreurs de calcul signalées exposant des opérateurs à des pénalités ; ETS à 100 % des émissions restituées dès 2026.
+    indicateurs:
+      - id: H3-A-1
+        description: Nouveaux acteurs, levées de fonds ou acquisitions dans les services de conformité FuelEU/ETS
+        sens: confirme
+        requete: FuelEU pooling platform funding acquisition compliance startup
+      - id: H3-A-2
+        description: Pénalités, litiges ou erreurs de conformité rendus publics chez des armateurs
+        sens: confirme
+        requete: FuelEU penalty shipowner non-compliance error
+      - id: H3-A-3
+        description: Offres de conformité intégrées gratuitement par les sociétés de classification ou les grands logiciels de flotte
+        sens: infirme
+        requete: classification society free FuelEU ETS compliance tool fleet software
+
+  - id: H3-B
+    question: Q3
+    type: hypothese
+    enonce: >
+      Le gisement principal se déplace vers l'infrastructure portuaire : soutage de carburants alternatifs
+      et branchement électrique à quai (obligatoire pour certains navires en 2030 au titre de FuelEU/AFIR).
+    confiance: plausible
+    contexte: >
+      L'obligation de branchement à quai (porte-conteneurs et navires à passagers, ports du RTE-T) s'applique en 2030 ;
+      le soutage GNL est mature, le soutage méthanol actif dans les ports chinois au S1 2026.
+    indicateurs:
+      - id: H3-B-1
+        description: Appels d'offres ou financements (MIE/CEF, AFIR) pour le branchement à quai ou le soutage dans les ports UE
+        sens: confirme
+        requete: onshore power supply port tender funding CEF AFIR 2030
+      - id: H3-B-2
+        description: Décisions d'investissement de ports français ou européens dans le soutage de carburants alternatifs
+        sens: confirme
+        requete: port investment alternative fuel bunkering methanol ammonia Europe
+      - id: H3-B-3
+        description: Reports ou dérogations à l'obligation de branchement à quai de 2030
+        sens: infirme
+        requete: onshore power supply 2030 obligation delay derogation ports
+
+  - id: H3-C
+    question: Q3
+    type: contre
+    enonce: >
+      Consolidation : grands armateurs, sociétés de classification et énergéticiens internalisent ou captent
+      les besoins (conformité, carburants, données), laissant peu de place aux prestataires indépendants.
+    confiance: plausible
+    contexte: >
+      Les grandes sociétés de classification et les éditeurs de logiciels de flotte élargissent leurs offres réglementaires ;
+      les grands armateurs disposent d'équipes de décarbonation internes.
+    indicateurs:
+      - id: H3-C-1
+        description: Acquisitions de cabinets ou start-up de décarbonation maritime par des groupes établis
+        sens: confirme
+        requete: acquisition maritime decarbonisation consultancy classification society
+      - id: H3-C-2
+        description: Annonces d'offres « tout-en-un » conformité + carburant par des énergéticiens ou armateurs
+        sens: confirme
+        requete: energy company bundled FuelEU compliance fuel offer shipping
+      - id: H3-C-3
+        description: Hausse des appels d'offres ou recrutements de prestataires externes par des armateurs moyens
+        sens: infirme
+        requete: shipowner tender decarbonisation consultant FuelEU ETS advisory
+
+sources_contexte:
+  - https://www.carbonbrief.org/qa-how-countries-got-the-global-net-zero-shipping-deal-back-on-track
+  - https://shippingtelegraph.com/decarbonisation/imos-net-zero-framework-heads-for-december-as-states-still-divided/
+  - https://gcaptain.com/alternative-fuel-ship-orders-up-57-in-2026-as-lng-continues-to-dominate/
+  - https://www.xindemarinenews.com/news/2072965970470928385
+  - https://greenfineprint.com/articles/eu-ets-review-changes
+  - https://apeks.tech/news/fueleu-first-verification-period/
+  - https://splash247.com/fueleu-maritime-calculation-error-exposes-operators-to-millions-in-unintended-penalties/

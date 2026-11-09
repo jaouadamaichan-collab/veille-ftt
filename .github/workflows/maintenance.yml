@@ -1,0 +1,36 @@
+name: Maintenance (import config, santé des sources, tests)
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Action à lancer
+        type: choice
+        options: [tests, import-config, import-config-maj-sources, sante-sources]
+        default: tests
+  push:
+    branches: [main]
+    paths: ['veille/**', 'config/**', 'tests/**']
+
+jobs:
+  maintenance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - name: Tests (toujours)
+        run: python -m pytest -q
+      - name: Import de la configuration
+        if: github.event_name == 'workflow_dispatch' && startsWith(inputs.action, 'import-config')
+        run: python -m veille.seed ${{ inputs.action == 'import-config-maj-sources' && '--maj-sources' || '' }}
+      - name: Santé des flux RSS
+        if: github.event_name == 'workflow_dispatch' && inputs.action == 'sante-sources'
+        run: python -m veille.check_sources

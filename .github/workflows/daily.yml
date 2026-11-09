@@ -1,0 +1,32 @@
+name: Veille quotidienne
+
+on:
+  schedule:
+    # 5h41 UTC = 6h41 (hiver) / 7h41 (été) à Paris. Minute décalée pour éviter la saturation de :00.
+    - cron: '41 5 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: veille-quotidienne
+  cancel-in-progress: false
+
+jobs:
+  daily:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Collecte et tri
+        env:
+          ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
+          SERPER_API_KEY:       ${{ secrets.SERPER_API_KEY }}
+          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          MAX_APPELS_LLM:       '40'
+          MAX_REQUETES_SERPER:  '20'
+        run: python -m veille.run_daily

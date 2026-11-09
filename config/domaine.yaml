@@ -1,0 +1,72 @@
+# Cadrage du domaine pilote (D3, D7, D8, D14)
+domaine: Décarbonation du transport maritime
+destinataire: Analyste/consultant (propriétaire du dépôt)
+finalite: >
+  Anticiper les évolutions du secteur pour orienter les prises de position
+  et repérer des opportunités professionnelles (missions, contacts, sujets d'expertise).
+
+echiquiers:
+  concurrentiel: Armateurs, chantiers, motoristes, fournisseurs d'énergie, ports (en tant qu'opérateurs), sociétés de classification, prestataires
+  institutionnel: UE (Commission, Parlement, Conseil, EMSA), OMI, États, autorités portuaires (en tant que régulateurs)
+  societe_civile: ONG, coalitions sectorielles, chercheurs, syndicats, opinion publique, chargeurs
+
+# Pré-filtre sans IA : un signal qui ne contient aucun de ces termes (titre + extrait,
+# insensible à la casse et aux accents) est écarté sans appel LLM. Garder large : le tri fin est fait par Haiku.
+mots_cles_prefiltre:
+  # EN
+  - decarboni
+  - emission
+  - carbon
+  - net-zero
+  - net zero
+  - greenhouse
+  - ghg
+  - fueleu
+  - ets
+  - imo
+  - mepc
+  - lng
+  - bio-lng
+  - methanol
+  - ammonia
+  - ethanol
+  - hydrogen
+  - biofuel
+  - e-fuel
+  - alternative fuel
+  - dual-fuel
+  - bunker
+  - shore power
+  - onshore power
+  - wind-assist
+  - pooling
+  - compliance
+  - green corridor
+  # FR
+  - décarbon
+  - carbone
+  - gnl
+  - méthanol
+  - ammoniac
+  - hydrogène
+  - biocarburant
+  - carburant
+  - soutage
+  - branchement à quai
+  - courant de quai
+  - émissions
+  - omi
+
+# Vocabulaire fixe (principe d'identité, D21) — un terme garde le même sens partout.
+vraisemblance: [probable, plausible, peu probable]
+
+questions:
+  - id: Q1
+    intitule: Quelle(s) filière(s) de carburant domineront les commandes de navires et les contrats d'approvisionnement d'ici 2030 ?
+    echiquier_principal: concurrentiel
+  - id: Q2
+    intitule: Comment évoluera le cadre réglementaire (application de FuelEU et de l'ETS maritime, révisions UE, sort du Net-Zero Framework OMI) ?
+    echiquier_principal: institutionnel
+  - id: Q3
+    intitule: Qui se positionne (armateurs, ports, énergéticiens, chantiers, prestataires) et où émergent des besoins adressables par un consultant ?
+    echiquier_principal: concurrentiel
