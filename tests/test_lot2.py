@@ -379,3 +379,19 @@ def test_brief_deux_fois_inexploitable_remonte_le_diagnostic(base, monkeypatch):
         run_weekly.executer(base, config.parametres(), Muet(), date(2026, 11, 16), None, erreurs)
     brief_ko = [e for e in erreurs if e.startswith("Brief, tentative")]
     assert len(brief_ko) == 2 and "max_tokens" in brief_ko[0] and "thinking" in brief_ko[0]
+
+
+def test_renvoyer_le_dernier_brief_avec_le_lien_du_cockpit(base, monkeypatch):
+    from veille import envoyer_brief
+    d = _dossier()
+    contenu = brief.valider(_brut(), d)
+    contenu["signaux"] = {s["id"]: {k: s[k] for k in ("titre", "media", "url", "echiquier", "date")} for s in d["signaux"]}
+    base.enregistrer_brief("2026-11-09", contenu, "ancien rendu sans lien")
+    monkeypatch.setenv("COCKPIT_URL", "https://veille-ftt.streamlit.app")
+    envois = []
+    assert envoyer_brief.main(base, lambda sujet, md: envois.append((sujet, md))) == 0
+    sujet, md = envois[0]
+    assert sujet == "Brief de veille — semaine du 9 novembre 2026"
+    assert "[Ouvrir le cockpit pour trancher](https://veille-ftt.streamlit.app)" in md
+    assert "[gcaptain.com](https://gcaptain.com/a)" in md                 # citations toujours résolues
+    assert base.brief("2026-11-09")["markdown"] == md                     # rendu mis à jour en base
