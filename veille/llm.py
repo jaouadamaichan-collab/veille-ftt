@@ -31,6 +31,7 @@ class ClientLLM:
 
         self._client = Anthropic(api_key=api_key)
         self.budget = budget
+        self.dernier: dict = {}
 
     def appeler(self, modele: str, systeme: str, message: str, max_tokens: int = 4096) -> str:
         self.budget.consommer()
@@ -40,7 +41,17 @@ class ClientLLM:
             messages=[{"role": "user", "content": message}],
             max_tokens=max_tokens,
         )
-        return "".join(b.text for b in reponse.content if getattr(b, "type", "") == "text").strip()
+        texte = "".join(b.text for b in reponse.content if getattr(b, "type", "") == "text").strip()
+        usage = getattr(reponse, "usage", None)
+        # Conservé pour le diagnostic quand la réponse est inexploitable.
+        self.dernier = {
+            "stop_reason": getattr(reponse, "stop_reason", None),
+            "blocs": [getattr(b, "type", "?") for b in reponse.content],
+            "tokens_sortie": getattr(usage, "output_tokens", None),
+            "debut": texte[:300],
+            "fin": texte[-200:],
+        }
+        return texte
 
 
 def extraire_json(texte: str):

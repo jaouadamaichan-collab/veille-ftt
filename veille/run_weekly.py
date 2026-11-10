@@ -11,6 +11,7 @@ Usage : python -m veille.run_weekly
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 from datetime import date, datetime, timedelta, timezone
@@ -75,6 +76,32 @@ def chercher_contre_preuves(db, p, resultat_avocat, hypotheses, indicateurs, sta
     trier(db, p, hypotheses, indicateurs, stats, erreurs)
 
 
+RAPPEL_FORMAT = (
+    "\n\nRAPPEL : ta réponse précédente n'était pas un objet JSON exploitable. "
+    "Réponds UNIQUEMENT avec l'objet JSON demandé, sans texte avant ni après, sans bloc de code."
+)
+
+
+def generer_brief(client, p, dossier: dict, erreurs: list[str]) -> dict:
+    """Rédaction du brief ; une seconde tentative avec rappel du format si la réponse est inexploitable."""
+    systeme = brief.construire_systeme(config.domaine())
+    message = brief.construire_message(dossier)
+    for tentative in (1, 2):
+        texte = client.appeler(p.modele_analyse, systeme, message + (RAPPEL_FORMAT if tentative == 2 else ""), max_tokens=12000)
+        try:
+            return brief.valider(extraire_json(texte), dossier)
+        except (ValueError, json.JSONDecodeError) as ex:
+            diag = getattr(client, "dernier", {}) or {}
+            detail = (
+                f"Brief, tentative {tentative} inexploitable ({ex}) — arrêt : {diag.get('stop_reason')}, "
+                f"blocs : {diag.get('blocs')}, jetons produits : {diag.get('tokens_sortie')}, "
+                f"début : « {diag.get('debut', texte[:300])} » … fin : « {diag.get('fin', texte[-200:])} »"
+            )
+            erreurs.append(detail)
+            log(detail)
+    raise ValueError("Brief inexploitable après deux tentatives (voir les incidents)")
+
+
 def publier_resume(texte: str) -> None:
     print(texte)
     if os.environ.get("GITHUB_STEP_SUMMARY"):
@@ -82,10 +109,10 @@ def publier_resume(texte: str) -> None:
             f.write(texte + "\n")
 
 
-def executer(db: Base, p: config.Parametres, client: ClientLLM, aujourd_hui: date, envoyer_mail=None) -> dict:
+def executer(db: Base, p: config.Parametres, client: ClientLLM, aujourd_hui: date, envoyer_mail=None, erreurs: list[str] | None = None) -> dict:
     """Cœur du passage hebdomadaire, injectable pour les tests. Retourne un bilan."""
     stats = {"nb_collectes": 0, "nb_nouveaux": 0, "nb_tries": 0, "nb_appels_llm": 0, "nb_requetes_serper": 0}
-    erreurs: list[str] = []
+    erreurs = [] if erreurs is None else erreurs
     maintenant = datetime.now(timezone.utc)
     semaine = lundi(aujourd_hui).isoformat()
     depuis_7j = (maintenant - timedelta(days=7)).isoformat()
@@ -112,8 +139,7 @@ def executer(db: Base, p: config.Parametres, client: ClientLLM, aujourd_hui: dat
         erreurs.append("Aucune hypothèse active : brief non généré (valider les hypothèses dans le cockpit)")
         return {"stats": stats, "erreurs": erreurs, "brief": None}
 
-    texte = client.appeler(p.modele_analyse, brief.construire_systeme(config.domaine()), brief.construire_message(dossier), max_tokens=8000)
-    contenu = brief.valider(extraire_json(texte), dossier)
+    contenu = generer_brief(client, p, dossier, erreurs)
     contenu["avocat_du_diable"] = resultat_avocat
     contenu["signaux"] = {s["id"]: {k: s[k] for k in ("titre", "media", "url", "echiquier", "date")} for s in dossier["signaux"]}
     url_cockpit = os.environ.get("COCKPIT_URL", "")
@@ -153,10 +179,11 @@ def main() -> int:
         dest = os.environ.get("GMAIL_DESTINATAIRE") or exp
         envoyer_mail = lambda sujet, md: envoyer(exp, mdp, dest, sujet, md)  # noqa: E731
 
-    bilan = {"stats": {}, "erreurs": []}
+    erreurs_partagees: list[str] = []
+    bilan = {"stats": {}, "erreurs": erreurs_partagees}
     statut = "ok"
     try:
-        bilan = executer(db, p, client, date.today(), envoyer_mail)
+        bilan = executer(db, p, client, date.today(), envoyer_mail, erreurs_partagees)
         if bilan["erreurs"]:
             statut = "partiel"
     except Exception as ex:

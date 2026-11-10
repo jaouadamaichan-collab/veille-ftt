@@ -265,7 +265,7 @@ class ClientScenario:
         self.messages.append((systeme, message))
         if systeme.startswith("Tu joues l'avocat du diable"):
             return json.dumps([{"hypothese": "H2-A", "falsificateur": "Nouvel ajournement à l'OMI", "angle_mort": "presse seule", "requetes": ["IMO net-zero vote postponed"]}])
-        dossier = json.loads(message.split("\n", 1)[1])
+        dossier, _ = json.JSONDecoder().raw_decode(message.split("\n", 1)[1])
         h2a = next(h for h in dossier["hypotheses"] if h["id"] == "H2-A")
         refs = h2a["preuves"]["soutient"] + h2a["preuves"]["contredit"]
         return json.dumps({
@@ -337,3 +337,45 @@ def test_sans_hypothese_active_pas_de_brief(base, monkeypatch):
     client = ClientScenario()
     bilan = run_weekly.executer(base, config.parametres(), client, date(2026, 11, 16), None)
     assert bilan["brief"] is None and client.messages == [] and "Aucune hypothèse active" in bilan["erreurs"][0]
+
+
+def test_brief_inexploitable_puis_reussi_a_la_seconde_tentative(base, monkeypatch):
+    monkeypatch.setattr(run_daily, "rechercher_serper", lambda *a: [])
+    monkeypatch.setenv("SERPER_API_KEY", "x")
+
+    class Bavard(ClientScenario):
+        essais = 0
+
+        def appeler(self, modele, systeme, message, max_tokens=4096):
+            if systeme.startswith("Tu rédiges") and Bavard.essais == 0:
+                Bavard.essais += 1
+                self.budget.consommer()
+                self.dernier = {"stop_reason": "end_turn", "blocs": ["text"], "tokens_sortie": 12, "debut": "Voici mon analyse", "fin": "fin"}
+                return "Voici mon analyse en prose, sans JSON."
+            return super().appeler(modele, systeme, message, max_tokens)
+
+    erreurs = []
+    client = Bavard()
+    bilan = run_weekly.executer(base, config.parametres(), client, date(2026, 11, 16), None, erreurs)
+    assert "RAPPEL" in client.messages[-1][1]
+    assert any("tentative 1 inexploitable" in e and "end_turn" in e for e in erreurs)
+    assert bilan["brief"] is not None
+
+
+def test_brief_deux_fois_inexploitable_remonte_le_diagnostic(base, monkeypatch):
+    monkeypatch.setattr(run_daily, "rechercher_serper", lambda *a: [])
+    monkeypatch.setenv("SERPER_API_KEY", "x")
+
+    class Muet(ClientScenario):
+        def appeler(self, modele, systeme, message, max_tokens=4096):
+            if systeme.startswith("Tu rédiges"):
+                self.budget.consommer()
+                self.dernier = {"stop_reason": "max_tokens", "blocs": ["thinking"], "tokens_sortie": 12000, "debut": "", "fin": ""}
+                return ""
+            return super().appeler(modele, systeme, message, max_tokens)
+
+    erreurs = []
+    with pytest.raises(ValueError, match="deux tentatives"):
+        run_weekly.executer(base, config.parametres(), Muet(), date(2026, 11, 16), None, erreurs)
+    brief_ko = [e for e in erreurs if e.startswith("Brief, tentative")]
+    assert len(brief_ko) == 2 and "max_tokens" in brief_ko[0] and "thinking" in brief_ko[0]
