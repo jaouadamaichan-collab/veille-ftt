@@ -87,7 +87,7 @@ def generer_brief(client, p, dossier: dict, erreurs: list[str]) -> dict:
     systeme = brief.construire_systeme(config.domaine())
     message = brief.construire_message(dossier)
     for tentative in (1, 2):
-        texte = client.appeler(p.modele_analyse, systeme, message + (RAPPEL_FORMAT if tentative == 2 else ""), max_tokens=12000)
+        texte = client.appeler(p.modele_analyse, systeme, message + (RAPPEL_FORMAT if tentative == 2 else ""), max_tokens=20000)  # Sonnet réfléchit avant de répondre : 12 000 jetons ne suffisaient pas (passage du 10/11)
         try:
             return brief.valider(extraire_json(texte), dossier)
         except (ValueError, json.JSONDecodeError) as ex:
