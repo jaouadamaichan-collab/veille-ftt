@@ -1,0 +1,37 @@
+name: Brief hebdomadaire
+
+on:
+  schedule:
+    # Lundi 6h23 UTC = 7h23 (hiver) / 8h23 (été) à Paris, après la collecte quotidienne de 5h41.
+    - cron: '23 6 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: veille-quotidienne   # même groupe que la collecte : jamais deux passages en même temps
+  cancel-in-progress: false
+
+jobs:
+  weekly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Avocat du diable, brief F-T-T et envoi
+        env:
+          ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
+          SERPER_API_KEY:       ${{ secrets.SERPER_API_KEY }}
+          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          GMAIL_EXPEDITEUR:     ${{ secrets.GMAIL_EXPEDITEUR }}
+          GMAIL_MOT_DE_PASSE:   ${{ secrets.GMAIL_MOT_DE_PASSE }}
+          GMAIL_DESTINATAIRE:   ${{ secrets.GMAIL_DESTINATAIRE }}
+          COCKPIT_URL:          ${{ vars.COCKPIT_URL }}
+          MAX_APPELS_LLM:       '10'     # tri des contre-preuves (Haiku)
+          MAX_APPELS_ANALYSE:   '3'      # avocat du diable + brief (Sonnet)
+          MAX_REQUETES_SERPER:  '12'
+        run: python -m veille.run_weekly

@@ -1,0 +1,5 @@
+streamlit>=1.38
+supabase>=2.0
+pyyaml>=6.0
+requests>=2.31
+markdown>=3.5

@@ -50,7 +50,7 @@ Hypothèses initiales : `config/hypotheses_initiales.yaml`.
 
 | # | Décision |
 |---|----------|
-| D18 | **Corroboration minimale** : ≥ 2 sources indépendantes de nature différente pour suggérer de renforcer/affaiblir une hypothèse. Une même dépêche reprise = 1 source (détection de reprise par similarité). |
+| D18 | **Corroboration minimale** : ≥ 2 sources indépendantes de nature différente pour suggérer de renforcer/affaiblir une hypothèse. Une même dépêche reprise = 1 source (détection de reprise par similarité). *Mise en œuvre (lot 2)* : « indépendantes » = domaines distincts hors reprises et hors sources « douteuses » ; « nature » = `institution` (domaines publics : europa.eu, imo.org, gouv.fr…), `societe_civile` (ONG et sources de cet échiquier) ou `presse` (le reste). Deux titres de presse ne suffisent donc pas. Règle appliquée en code : une suggestion qui ne la respecte pas est ramenée à « maintenir ». |
 | D23 | **Avocat du diable** hebdomadaire : pour chaque hypothèse active, « qu'est-ce qui la rendrait fausse ? » → requêtes Serper ciblées sur les contre-preuves, avant rédaction du brief. |
 | D24 | Étiquetage **échiquier** de chaque signal ; encart « enchaînements inter-échiquiers » dans le brief ; alerte si un échiquier n'a reçu aucun signal pertinent depuis 2 semaines. |
 | D25 | **Contrôle anti-hallucination en code** : toute affirmation du brief doit référencer un signal présent en base ; sinon elle est supprimée ou marquée « non sourcé ». |
@@ -91,7 +91,7 @@ Voir `sql/schema.sql`.
 | Lot | Contenu | Critère de fin |
 |-----|---------|----------------|
 | **1 — Cadrage** | Spec, hypothèses validées, schéma, collecte quotidienne (RSS + Serper), dédoublonnage/reprises, tri Haiku (pertinence, échiquier, rattachement), contrôle de santé des sources | La base se remplit chaque jour de signaux triés et rattachés |
-| **2 — Analyse** | Avocat du diable, brief F-T-T hebdo (Sonnet), contrôle des sources citées, cockpit Streamlit de validation | Premier brief du lundi validé dans le cockpit |
+| **2 — Analyse** | Avocat du diable, brief F-T-T hebdo (Sonnet), contrôle des sources citées, cockpit Streamlit de validation. *Livré le 10/11/2026 ; le cockpit inclut déjà les motifs de rejet structurés (D22) et la suggestion d'archivage (D19).* | Premier brief du lundi validé dans le cockpit |
 | **3 — Boucles** | Alertes indicateurs, part d'exploration, motifs de rejet, retour à 6 semaines | Premier retour à 6 semaines effectué |
 
 ## 10. Références dans la thèse

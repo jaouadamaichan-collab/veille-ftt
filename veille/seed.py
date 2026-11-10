@@ -14,14 +14,15 @@ from . import config
 from .db import Base
 
 
-def main(argv: list[str]) -> int:
+def main(argv: list[str], db: Base | None = None) -> int:
     erreurs = config.valider()
     if erreurs:
         print("Configuration invalide :\n- " + "\n- ".join(erreurs))
         return 1
 
-    p = config.parametres()
-    db = Base(p.supabase_url, p.supabase_key)
+    if db is None:
+        p = config.parametres()
+        db = Base(p.supabase_url, p.supabase_key)
     run_id = db.debut_run("seed")
 
     d = config.domaine()

@@ -10,7 +10,7 @@ on:
         default: tests
   push:
     branches: [main]
-    paths: ['veille/**', 'config/**', 'tests/**']
+    paths: ['veille/**', 'config/**', 'tests/**', 'cockpit/**']
 
 jobs:
   maintenance:

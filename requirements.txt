@@ -4,3 +4,4 @@ feedparser>=6.0
 requests>=2.31
 pyyaml>=6.0
 ddgs>=9.0
+markdown>=3.5

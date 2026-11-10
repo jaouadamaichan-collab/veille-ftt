@@ -3,7 +3,7 @@
 Agent de veille stratégique — décarbonation du transport maritime — fondé sur le protocole
 **Formuler → Tester → Tracer** (thèse de C. Deschamps, 2025). Décisions de conception : [SPEC.md](SPEC.md).
 
-**État : lot 1 (cadrage + collecte quotidienne).** Lots 2 (brief F-T-T, cockpit) et 3 (alertes, boucles) à venir.
+**État : lots 1 (cadrage, collecte quotidienne) et 2 (brief F-T-T du lundi, cockpit).** Lot 3 (alertes sur indicateurs, retour à 6 semaines) à venir.
 
 ## Fonctionnement du lot 1
 
@@ -14,6 +14,35 @@ Chaque matin (GitHub Actions, 6h41 heure de Paris en hiver) :
 3. **Pré-filtre** sans IA par mots-clés du domaine.
 4. **Tri Haiku** : pertinence, score, échiquier, questions clés, et *propositions* de rattachement aux hypothèses (soutient / contredit), avec la justification factuelle. Les identifiants inventés par le modèle sont filtrés en code.
 5. Tout est écrit dans Supabase. Aucun commit dans le dépôt.
+
+## Le brief du lundi (lot 2)
+
+Chaque lundi (7h23 heure de Paris en hiver), après la collecte :
+
+1. **Avocat du diable** (Sonnet) : pour chaque hypothèse active, ce qui la rendrait fausse, et 1-2 requêtes pour le chercher.
+2. Collecte et tri de ces **contre-preuves**.
+3. **Dossier calculé en code** : preuves par hypothèse, corroboration (≥ 2 sources indépendantes de nature différente), échiquiers silencieux depuis 14 jours, candidats hors radar, hypothèses sans signal depuis 6 semaines.
+4. **Brief F-T-T** (Sonnet) : 3 mouvements au plus, chacun en Formuler / Tester / Tracer, vocabulaire probable / plausible / peu probable.
+5. **Contrôle en code** : tout élément de preuve sans signal du dossier est retiré, toute référence inventée est remplacée par « [non sourcé] », toute suggestion « renforcée / affaiblie » sans corroboration suffisante est ramenée à « maintenir ».
+6. Enregistrement en brouillon et **envoi par mail** avec le lien du cockpit.
+
+L'agent ne change jamais un statut : il suggère, l'analyste tranche dans le cockpit.
+
+## Le cockpit
+
+Application Streamlit (`cockpit/app.py`) : brief et décisions à prendre, registre des hypothèses (statut, vraisemblance,
+reformulation, historique, ajout), liens proposés à valider ou rejeter avec motif, réglage des sources, journal des exécutions.
+
+Déploiement sur [share.streamlit.io](https://share.streamlit.io) : *New app* → dépôt `veille-ftt`, branche `main`,
+*Main file path* `cockpit/app.py` → *Advanced settings → Secrets* :
+
+```toml
+SUPABASE_URL = "https://xxxx.supabase.co"
+SUPABASE_SERVICE_KEY = "sb_secret_..."
+MOT_DE_PASSE = "choisissez-un-mot-de-passe"
+```
+
+Si un secret manque, l'application affiche lesquels elle ne trouve pas.
 
 ## Mise en route (une fois)
 
@@ -27,6 +56,11 @@ Chaque matin (GitHub Actions, 6h41 heure de Paris en hiver) :
    | `SERPER_API_KEY` | clé serper.dev |
    | `SUPABASE_URL` | `https://<projet>.supabase.co` |
    | `SUPABASE_SERVICE_KEY` | clé service_role |
+   | `GMAIL_EXPEDITEUR` | adresse Gmail d'envoi (brief du lundi) |
+   | `GMAIL_MOT_DE_PASSE` | mot de passe d'application Gmail |
+   | `GMAIL_DESTINATAIRE` | facultatif, sinon l'expéditeur |
+
+   Et dans l'onglet *Variables* : `COCKPIT_URL` = l'adresse du cockpit Streamlit (lien dans le mail).
 4. **Actions → Maintenance → Run workflow** :
    - `import-config` : importe questions, hypothèses (statut *proposee*), indicateurs et sources ;
    - `sante-sources` : teste chaque flux RSS et affiche un tableau dans le résumé de l'exécution ;

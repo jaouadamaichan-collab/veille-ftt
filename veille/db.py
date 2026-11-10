@@ -36,7 +36,10 @@ def verifier_cle_serveur(cle: str) -> None:
 
 
 class Base:
-    def __init__(self, url: str, cle: str):
+    def __init__(self, url: str = "", cle: str = "", client=None):
+        if client is not None:  # injection (tests)
+            self.c = client
+            return
         from supabase import create_client
 
         if not url or not cle:
@@ -134,6 +137,38 @@ class Base:
     def inserer_liens(self, liens: list[dict]) -> None:
         if liens:
             self.t("liens").upsert(liens, on_conflict="signal_id,hypothese_id", ignore_duplicates=True).execute()
+
+    # ───────────── Analyse hebdomadaire ─────────────
+
+    def signaux_depuis(self, depuis: str, pertinents_seulement: bool = True) -> list[dict]:
+        q = self.t("signaux").select("*").gte("collecte_le", depuis)
+        if pertinents_seulement:
+            q = q.eq("pertinent", True)
+        return q.order("id").limit(5000).execute().data
+
+    def liens_des_signaux(self, ids: list[int]) -> list[dict]:
+        sortie: list[dict] = []
+        for k in range(0, len(ids), 100):
+            sortie += self.t("liens").select("*").in_("signal_id", ids[k : k + 100]).execute().data
+        return sortie
+
+    def toutes_sources(self) -> dict[str, dict]:
+        return {s["id"]: s for s in self.t("sources").select("*").execute().data}
+
+    def brief(self, semaine: str) -> dict | None:
+        lignes = self.t("briefs").select("*").eq("semaine", semaine).execute().data
+        return lignes[0] if lignes else None
+
+    def enregistrer_brief(self, semaine: str, contenu: dict, markdown: str) -> bool:
+        """Écrit le brief de la semaine. Un brief déjà validé par l'analyste n'est jamais écrasé."""
+        existant = self.brief(semaine)
+        if existant and existant["statut"] == "valide":
+            return False
+        if existant:
+            self.t("briefs").update({"contenu": contenu, "markdown": markdown}).eq("semaine", semaine).execute()
+        else:
+            self.t("briefs").insert({"semaine": semaine, "contenu": contenu, "markdown": markdown}).execute()
+        return True
 
     def hypotheses_signalees(self, ids: set[str]) -> None:
         if ids:
